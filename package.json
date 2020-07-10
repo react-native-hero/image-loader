@@ -1,0 +1,24 @@
+{
+  "name": "@react-native-hero/image-loader",
+  "version": "0.0.1",
+  "description": "react native image loader",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/react-native-hero/image-loader.git"
+  },
+  "keywords": [
+    "react",
+    "native",
+    "image loader"
+  ],
+  "author": "musicode",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/react-native-hero/image-loader/issues"
+  },
+  "homepage": "https://github.com/react-native-hero/image-loader#readme"
+}
