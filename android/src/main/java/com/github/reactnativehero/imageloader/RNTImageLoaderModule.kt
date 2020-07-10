@@ -12,11 +12,13 @@ import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.facebook.react.bridge.*
 import java.io.File
+import java.nio.ByteBuffer
 import java.util.*
 
 class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -145,6 +147,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 }
             }).start()
 
+        }
+
+        fun getImageBuffer(drawable: Drawable): ByteBuffer? {
+            return if (drawable is GifDrawable) {
+                drawable.buffer
+            } else null
         }
 
     }
