@@ -1,6 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.github.reactnativehero.imageloader">
 
-    <uses-permission android:name="android.permission.INTERNET"></uses-permission>
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <!--
+  Allows Glide to monitor connectivity status and restart failed requests if users go from a
+  a disconnected to a connected network state.
+  -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+  <!--
+    Store Glide’s cache on the public sdcard
+  -->
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
 </manifest>

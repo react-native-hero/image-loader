@@ -1,191 +1,156 @@
 package com.github.reactnativehero.imageloader
 
-import com.amap.api.location.AMapLocation
-import com.amap.api.location.AMapLocationClient
-import com.amap.api.location.AMapLocationClientOption
+import android.app.Application
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.webkit.URLUtil
+import android.widget.ImageView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.Target
 import com.facebook.react.bridge.*
+import java.io.File
 import java.util.*
 
 class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
-        private const val PURPOSE_NONE = 1
-        private const val PURPOSE_SIGN_IN = 2
-        private const val PURPOSE_TRANSPORT = 3
-        private const val PURPOSE_SPORT = 4
 
-        private const val MODE_HIGH_ACCURACY = 1
-        private const val MODE_BATTERY_SAVING = 2
-        private const val MODE_DEVICE_SENSORS = 3
-    }
+        fun init(app: Application) {
 
-    private var client = AMapLocationClient(reactContext)
-    private var clientOptions = AMapLocationClientOption()
+            // 和 ios 保持一致，预留初始化接口
 
-    override fun onCatalystInstanceDestroy() {
-        super.onCatalystInstanceDestroy()
-        // 销毁定位客户端，同时销毁本地定位服务
-        client.onDestroy()
+        }
+
+        fun loadImage(context: Context, url: String, onComplete: (Bitmap?) -> Unit) {
+            Glide.with(context).asBitmap().load(url).listener(object : RequestListener<Bitmap> {
+                override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Bitmap>, isFirstResource: Boolean): Boolean {
+                    onComplete(null)
+                    return false
+                }
+                override fun onResourceReady(resource: Bitmap, model: Any, target: Target<Bitmap>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    onComplete(resource)
+                    return false
+                }
+            }).submit()
+        }
+
+        fun setThumbnailImage(imageView: ImageView, url: String, loading: Int, error: Int, onComplete: (Drawable?) -> Unit) {
+
+            var options = RequestOptions()
+            if (loading > 0) {
+                options = options.placeholder(loading)
+            }
+            if (error > 0) {
+                options = options.error(error)
+            }
+
+            Glide.with(imageView.context).load(url).apply(options).listener(object: RequestListener<Drawable> {
+
+                override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+                    onComplete(null)
+                    return false
+                }
+                override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    onComplete(resource)
+                    return false
+                }
+
+            }).into(imageView)
+
+        }
+
+        fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onComplete: (Drawable?) -> Unit) {
+
+            val fileName = URLUtil.guessFileName(url, null, null).toLowerCase(Locale.ENGLISH)
+            var extName = ""
+            val index = fileName.lastIndexOf(".")
+            if (index > 0) {
+                extName = fileName.substring(index + 1)
+            }
+
+            var options = RequestOptions()
+            if (loading > 0) {
+                options = options.placeholder(loading)
+            }
+            if (error > 0) {
+                options = options.error(error)
+            }
+
+            if (extName == "gif") {
+                Glide.with(imageView.context).load(url).apply(options).listener(object : RequestListener<Drawable> {
+
+                    override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
+                        onComplete(null)
+                        return false
+                    }
+                    override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
+                        onComplete(resource)
+                        return false
+                    }
+
+                }).into(imageView)
+            } else {
+                if (loading > 0) {
+                    imageView.setImageDrawable(options.placeholderDrawable)
+                }
+                Glide.with(imageView.context).downloadOnly().load(url).listener(object : RequestListener<File> {
+
+                    override fun onLoadFailed(e: GlideException?, model: Any, target: Target<File>, isFirstResource: Boolean): Boolean {
+                        if (error > 0) {
+                            imageView.setImageDrawable(options.errorPlaceholder)
+                        }
+                        onComplete(null)
+                        return false
+                    }
+                    override fun onResourceReady(resource: File, model: Any, target: Target<File>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+
+                        var absolutePath = resource.absolutePath
+                        if (absolutePath.startsWith("/")) {
+                            absolutePath = absolutePath.substring(1)
+                        }
+
+                        // 操作 UI 需回到主线程
+                        imageView.post {
+                            imageView.setImageURI(Uri.parse("file:///$absolutePath"))
+                            onComplete(imageView.drawable)
+                        }
+
+                        return false
+                    }
+
+                }).submit()
+            }
+        }
+
+        fun getImageCachePath(context: Context, url: String, callback: (String) -> Unit) {
+
+            val handler = Handler(Looper.getMainLooper())
+
+            Thread(Runnable {
+                try {
+                    val options = RequestOptions().onlyRetrieveFromCache(true)
+                    val file = Glide.with(context).asFile().apply(options).load(url).submit().get()
+                    handler.post { callback(file.absolutePath) }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    handler.post { callback("") }
+                }
+            }).start()
+
+        }
+
     }
 
     override fun getName(): String {
         return "RNTImageLoader"
-    }
-
-    override fun getConstants(): Map<String, Any>? {
-
-        val constants: MutableMap<String, Any> = HashMap()
-
-        constants["PURPOSE_NONE"] = PURPOSE_NONE
-        constants["PURPOSE_SIGN_IN"] = PURPOSE_SIGN_IN
-        constants["PURPOSE_TRANSPORT"] = PURPOSE_TRANSPORT
-        constants["PURPOSE_SPORT"] = PURPOSE_SPORT
-
-        constants["MODE_HIGH_ACCURACY"] = MODE_HIGH_ACCURACY
-        constants["MODE_BATTERY_SAVING"] = MODE_BATTERY_SAVING
-        constants["MODE_DEVICE_SENSORS"] = MODE_DEVICE_SENSORS
-
-        return constants
-
-    }
-
-    @ReactMethod
-    fun setOptions(options: ReadableMap) {
-
-        if (options.hasKey("purpose")) {
-            // 设置定位场景，目前支持三种场景（签到、出行、运动，默认无场景）
-            clientOptions.locationPurpose = when (options.getInt("purpose")) {
-                PURPOSE_SIGN_IN -> {
-                    AMapLocationClientOption.AMapLocationPurpose.SignIn
-                }
-                PURPOSE_TRANSPORT -> {
-                    AMapLocationClientOption.AMapLocationPurpose.Transport
-                }
-                PURPOSE_SPORT -> {
-                    AMapLocationClientOption.AMapLocationPurpose.Sport
-                }
-                else -> {
-                    null
-                }
-            }
-        }
-
-        if (options.hasKey("mode")) {
-            clientOptions.locationMode = when (options.getInt("mode")) {
-                // 高精度定位模式：会同时使用网络定位和GPS定位，优先返回最高精度的定位结果，以及对应的地址描述信息
-                MODE_HIGH_ACCURACY -> {
-                    AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
-                }
-                // 低功耗定位模式：不会使用GPS和其他传感器，只会使用网络定位（Wi-Fi和基站定位）
-                MODE_BATTERY_SAVING -> {
-                    AMapLocationClientOption.AMapLocationMode.Battery_Saving
-                }
-                // 仅用设备定位模式：不需要连接网络，只使用GPS进行定位，这种模式下不支持室内环境的定位，需要在室外环境下才可以成功定位
-                else -> {
-                    AMapLocationClientOption.AMapLocationMode.Device_Sensors
-                }
-            }
-        }
-
-        if (options.hasKey("timeout")) {
-            // 单位是毫秒，默认30000毫秒，建议超时时间不要低于8000毫秒
-            clientOptions.httpTimeOut = options.getInt("timeout") * 1000L
-        }
-
-        if (options.hasKey("enableWifiScan")) {
-            // 是否主动刷新设备wifi模块，获取到最新鲜的wifi列表，默认 false
-            clientOptions.isWifiScan = options.getBoolean("enableWifiScan")
-        }
-
-        if (options.hasKey("enableMock")) {
-            // 设置是否允许模拟位置，默认为 true，允许模拟位置
-            clientOptions.isMockEnable = options.getBoolean("enableMock")
-        }
-
-        if (options.hasKey("enableCache")) {
-            // 是否开启定位缓存机制，默认开启
-            clientOptions.isLocationCacheEnable = options.getBoolean("enableCache")
-        }
-
-        // 暂不开放连续定位
-//        if (options.hasKey("interval")) {
-//            // 设置定位间隔，单位毫秒，默认为2000ms，最低1000ms
-//            clientOptions.interval = options.getInt("interval").toLong()
-//        }
-
-    }
-
-    @ReactMethod
-    fun location(promise: Promise) {
-
-        stopLocationIfNeeded()
-
-        // 获取最近3s内精度最高的一次定位结果
-        clientOptions.isOnceLocationLatest = true
-
-        startLocation {
-            if (it.errorCode == AMapLocation.LOCATION_SUCCESS) {
-                val coords = Arguments.createMap()
-                // 纬度
-                coords.putDouble("latitude", it.latitude)
-                // 纬度
-                coords.putDouble("longitude", it.longitude)
-                // 位置精度
-                coords.putDouble("accuracy", it.accuracy.toDouble())
-                // 海拔
-                coords.putDouble("altitude", it.altitude)
-
-                val map = Arguments.createMap()
-                map.putMap("coords", coords)
-                map.putString("timestamp", it.time.toString())
-
-                promise.resolve(map)
-            }
-            else {
-                promise.reject(it.errorCode.toString(), it.errorInfo)
-            }
-        }
-
-    }
-
-    @ReactMethod
-    fun reGeocode(promise: Promise) {
-
-        stopLocationIfNeeded()
-
-        // 获取最近3s内精度最高的一次定位结果
-        clientOptions.isOnceLocationLatest = true
-
-        startLocation {
-            if (it.errorCode == AMapLocation.LOCATION_SUCCESS) {
-                val map = Arguments.createMap()
-                map.putString("address", it.address)
-                map.putString("country", it.country)
-                map.putString("province", it.province)
-                map.putString("city", it.city)
-                map.putString("district", it.district)
-                map.putString("street", it.street)
-                map.putString("number", it.streetNum)
-                promise.resolve(map)
-            }
-            else {
-                promise.reject(it.errorCode.toString(), it.errorInfo)
-            }
-        }
-
-    }
-
-    private fun startLocation(listener: (AMapLocation) -> Unit) {
-        client.setLocationOption(clientOptions)
-        client.setLocationListener(listener)
-        client.startLocation()
-    }
-
-    private fun stopLocationIfNeeded() {
-        if (client.isStarted) {
-            client.stopLocation()
-            client.setLocationListener {  }
-        }
     }
 
 }
