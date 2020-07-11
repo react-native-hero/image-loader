@@ -16,7 +16,8 @@ import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
-import com.facebook.react.bridge.*
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReactContextBaseJavaModule
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.*
@@ -31,20 +32,25 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
         }
 
-        fun loadImage(context: Context, url: String, onComplete: (Bitmap?) -> Unit) {
+        fun loadImage(context: Context, url: String, onProgress: (Long, Long) -> Unit, onComplete: (Bitmap?) -> Unit) {
+
+            addProgressListener(url, onProgress)
+
             Glide.with(context).asBitmap().load(url).listener(object : RequestListener<Bitmap> {
                 override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Bitmap>, isFirstResource: Boolean): Boolean {
+                    removeProgressListener(url)
                     onComplete(null)
                     return false
                 }
                 override fun onResourceReady(resource: Bitmap, model: Any, target: Target<Bitmap>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    removeProgressListener(url)
                     onComplete(resource)
                     return false
                 }
             }).submit()
         }
 
-        fun setThumbnailImage(imageView: ImageView, url: String, loading: Int, error: Int, onComplete: (Drawable?) -> Unit) {
+        fun setThumbnailImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
 
             var options = RequestOptions()
             if (loading > 0) {
@@ -54,13 +60,17 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 options = options.error(error)
             }
 
+            addProgressListener(url, onProgress)
+
             Glide.with(imageView.context).load(url).apply(options).listener(object: RequestListener<Drawable> {
 
                 override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+                    removeProgressListener(url)
                     onComplete(null)
                     return false
                 }
                 override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    removeProgressListener(url)
                     onComplete(resource)
                     return false
                 }
@@ -69,7 +79,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
         }
 
-        fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onComplete: (Drawable?) -> Unit) {
+        fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
 
             val fileName = URLUtil.guessFileName(url, null, null).toLowerCase(Locale.ENGLISH)
             var extName = ""
@@ -86,20 +96,25 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 options = options.error(error)
             }
 
+            addProgressListener(url, onProgress)
+
             if (extName == "gif") {
                 Glide.with(imageView.context).load(url).apply(options).listener(object : RequestListener<Drawable> {
 
                     override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
+                        removeProgressListener(url)
                         onComplete(null)
                         return false
                     }
                     override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
+                        removeProgressListener(url)
                         onComplete(resource)
                         return false
                     }
 
                 }).into(imageView)
-            } else {
+            }
+            else {
                 if (loading > 0) {
                     imageView.setImageDrawable(options.placeholderDrawable)
                 }
@@ -109,10 +124,13 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                         if (error > 0) {
                             imageView.setImageDrawable(options.errorPlaceholder)
                         }
+                        removeProgressListener(url)
                         onComplete(null)
                         return false
                     }
                     override fun onResourceReady(resource: File, model: Any, target: Target<File>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+
+                        removeProgressListener(url)
 
                         var absolutePath = resource.absolutePath
                         if (absolutePath.startsWith("/")) {
@@ -153,6 +171,27 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             return if (drawable is GifDrawable) {
                 drawable.buffer
             } else null
+        }
+
+        private fun addProgressListener(url: String, onProgress: (Long, Long) -> Unit) {
+
+            val listener = object : ProgressListener {
+                override fun onProgress(loaded: Long, total: Long) {
+                    onProgress(loaded, total)
+                    if (loaded > 0 && loaded >= total) {
+                        ProgressInterceptor.removeListener(url)
+                    }
+                }
+            }
+
+            ProgressInterceptor.addListener(url, listener)
+
+        }
+
+        private fun removeProgressListener(url: String) {
+
+            ProgressInterceptor.removeListener(url)
+
         }
 
     }
