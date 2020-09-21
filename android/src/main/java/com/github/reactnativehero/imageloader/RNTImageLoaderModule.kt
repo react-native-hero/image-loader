@@ -26,31 +26,36 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
     companion object {
 
-        fun init(app: Application) {
+        @JvmStatic fun init(app: Application) {
 
             // 和 ios 保持一致，预留初始化接口
 
         }
 
-        fun loadImage(context: Context, url: String, onProgress: (Long, Long) -> Unit, onComplete: (Bitmap?) -> Unit) {
+        @JvmStatic fun loadImage(context: Context, url: String, onProgress: (Long, Long) -> Unit, onComplete: (Bitmap?) -> Unit) {
 
             addProgressListener(url, onProgress)
 
             Glide.with(context).asBitmap().load(url).listener(object : RequestListener<Bitmap> {
                 override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Bitmap>, isFirstResource: Boolean): Boolean {
                     removeProgressListener(url)
-                    onComplete(null)
+                    runMainThread {
+                        onComplete(null)
+                    }
                     return false
                 }
                 override fun onResourceReady(resource: Bitmap, model: Any, target: Target<Bitmap>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
                     removeProgressListener(url)
-                    onComplete(resource)
+                    runMainThread {
+                        onComplete(resource)
+                    }
                     return false
                 }
             }).submit()
+
         }
 
-        fun setThumbnailImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
+        @JvmStatic fun setThumbnailImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
 
             var options = RequestOptions()
             if (loading > 0) {
@@ -60,26 +65,33 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 options = options.error(error)
             }
 
-            addProgressListener(url, onProgress)
+            runMainThread {
 
-            Glide.with(imageView.context).load(url).apply(options).listener(object: RequestListener<Drawable> {
+                addProgressListener(url, onProgress)
 
-                override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
-                    removeProgressListener(url)
-                    onComplete(null)
-                    return false
-                }
-                override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
-                    removeProgressListener(url)
-                    onComplete(resource)
-                    return false
-                }
+                Glide.with(imageView.context).load(url).apply(options).listener(object: RequestListener<Drawable> {
 
-            }).into(imageView)
+                    override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+                        removeProgressListener(url)
+                        runMainThread {
+                            onComplete(null)
+                        }
+                        return false
+                    }
+                    override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                        removeProgressListener(url)
+                        runMainThread {
+                            onComplete(resource)
+                        }
+                        return false
+                    }
+
+                }).into(imageView)
+            }
 
         }
 
-        fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
+        @JvmStatic fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
 
             val fileName = URLUtil.guessFileName(url, null, null).toLowerCase(Locale.ENGLISH)
             var extName = ""
@@ -96,78 +108,91 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 options = options.error(error)
             }
 
-            addProgressListener(url, onProgress)
+            runMainThread {
 
-            if (extName == "gif") {
-                Glide.with(imageView.context).load(url).apply(options).listener(object : RequestListener<Drawable> {
+                addProgressListener(url, onProgress)
 
-                    override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
-                        removeProgressListener(url)
-                        onComplete(null)
-                        return false
-                    }
-                    override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
-                        removeProgressListener(url)
-                        onComplete(resource)
-                        return false
-                    }
+                if (extName == "gif") {
+                    Glide.with(imageView.context).load(url).apply(options).listener(object : RequestListener<Drawable> {
 
-                }).into(imageView)
-            }
-            else {
-                if (loading > 0) {
-                    imageView.setImageDrawable(options.placeholderDrawable)
+                        override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
+                            removeProgressListener(url)
+                            runMainThread {
+                                onComplete(null)
+                            }
+                            return false
+                        }
+
+                        override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
+                            removeProgressListener(url)
+                            runMainThread {
+                                onComplete(resource)
+                            }
+                            return false
+                        }
+
+                    }).into(imageView)
                 }
-                Glide.with(imageView.context).downloadOnly().load(url).listener(object : RequestListener<File> {
-
-                    override fun onLoadFailed(e: GlideException?, model: Any, target: Target<File>, isFirstResource: Boolean): Boolean {
-                        if (error > 0) {
-                            imageView.setImageDrawable(options.errorPlaceholder)
-                        }
-                        removeProgressListener(url)
-                        onComplete(null)
-                        return false
+                else {
+                    if (loading > 0) {
+                        imageView.setImageDrawable(options.placeholderDrawable)
                     }
-                    override fun onResourceReady(resource: File, model: Any, target: Target<File>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    Glide.with(imageView.context).downloadOnly().load(url).listener(object : RequestListener<File> {
 
-                        removeProgressListener(url)
-
-                        var absolutePath = resource.absolutePath
-                        if (absolutePath.startsWith("/")) {
-                            absolutePath = absolutePath.substring(1)
+                        override fun onLoadFailed(e: GlideException?, model: Any, target: Target<File>, isFirstResource: Boolean): Boolean {
+                            removeProgressListener(url)
+                            runMainThread {
+                                if (error > 0) {
+                                    imageView.setImageDrawable(options.errorPlaceholder)
+                                }
+                                onComplete(null)
+                            }
+                            return false
                         }
 
-                        // 操作 UI 需回到主线程
-                        imageView.post {
-                            imageView.setImageURI(Uri.parse("file:///$absolutePath"))
-                            onComplete(imageView.drawable)
+                        override fun onResourceReady(resource: File, model: Any, target: Target<File>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+
+                            removeProgressListener(url)
+
+                            var absolutePath = resource.absolutePath
+                            if (absolutePath.startsWith("/")) {
+                                absolutePath = absolutePath.substring(1)
+                            }
+
+                            runMainThread {
+                                imageView.setImageURI(Uri.parse("file:///$absolutePath"))
+                                onComplete(imageView.drawable)
+                            }
+
+                            return false
                         }
 
-                        return false
-                    }
-
-                }).submit()
+                    }).submit()
+                }
             }
+
         }
 
-        fun getImageCachePath(context: Context, url: String, callback: (String) -> Unit) {
-
-            val handler = Handler(Looper.getMainLooper())
+        @JvmStatic fun getImageCachePath(context: Context, url: String, callback: (String) -> Unit) {
 
             Thread(Runnable {
                 try {
                     val options = RequestOptions().onlyRetrieveFromCache(true)
                     val file = Glide.with(context).asFile().apply(options).load(url).submit().get()
-                    handler.post { callback(file.absolutePath) }
+                    runMainThread {
+                        callback(file.absolutePath)
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    handler.post { callback("") }
+                    runMainThread {
+                        callback("")
+                    }
                 }
             }).start()
 
         }
 
-        fun getImageBuffer(drawable: Drawable): ByteBuffer? {
+        @JvmStatic fun getImageBuffer(drawable: Drawable): ByteBuffer? {
             return if (drawable is GifDrawable) {
                 drawable.buffer
             } else null
@@ -177,7 +202,9 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
             val listener = object : ProgressListener {
                 override fun onProgress(loaded: Long, total: Long) {
-                    onProgress(loaded, total)
+                    runMainThread {
+                        onProgress(loaded, total)
+                    }
                     if (loaded > 0 && loaded >= total) {
                         ProgressInterceptor.removeListener(url)
                     }
@@ -191,6 +218,18 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
         private fun removeProgressListener(url: String) {
 
             ProgressInterceptor.removeListener(url)
+
+        }
+
+        private fun runMainThread(callback: () -> Unit) {
+
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                callback()
+                return
+            }
+
+            val mainThread = Handler(Looper.getMainLooper())
+            mainThread.post { callback() }
 
         }
 
