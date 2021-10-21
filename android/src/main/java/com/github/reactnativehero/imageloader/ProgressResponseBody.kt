@@ -7,7 +7,7 @@ import okio.*
 class ProgressResponseBody(url: String, private val responseBody: ResponseBody) : ResponseBody() {
 
     private val bufferedSource: BufferedSource by lazy {
-        Okio.buffer(ProgressSource(responseBody.source()))
+        ProgressSource(responseBody.source()).buffer()
     }
     private var listener = ProgressInterceptor.LISTENER_MAP[url]
 
@@ -23,7 +23,7 @@ class ProgressResponseBody(url: String, private val responseBody: ResponseBody) 
         return bufferedSource
     }
 
-    private inner class ProgressSource internal constructor(source: Source?) : ForwardingSource(source) {
+    private inner class ProgressSource constructor(source: Source) : ForwardingSource(source) {
 
         var loadedBytes: Long = 0
 

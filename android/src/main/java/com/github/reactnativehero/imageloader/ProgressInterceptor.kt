@@ -9,8 +9,8 @@ class ProgressInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val response = chain.proceed(request)
-        val url = request.url().toString()
-        val body = response.body()
+        val url = request.url.toString()
+        val body = response.body
         return response.newBuilder().body(ProgressResponseBody(url, body!!)).build()
     }
 

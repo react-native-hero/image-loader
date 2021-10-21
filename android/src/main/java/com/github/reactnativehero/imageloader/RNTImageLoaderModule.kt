@@ -175,7 +175,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
         @JvmStatic fun getImageCachePath(context: Context, url: String, callback: (String) -> Unit) {
 
-            Thread(Runnable {
+            Thread {
                 try {
                     val options = RequestOptions().onlyRetrieveFromCache(true)
                     val file = Glide.with(context).asFile().apply(options).load(url).submit().get()
@@ -188,7 +188,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                         callback("")
                     }
                 }
-            }).start()
+            }.start()
 
         }
 
