@@ -1,4 +1,5 @@
 #import "RNTImageLoader.h"
+#import <React/RCTConvert.h>
 
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <SDWebImage/SDImageCache.h>
@@ -122,6 +123,44 @@ RCT_EXPORT_MODULE(RNTImageLoader);
         URL = [NSURL URLWithString:url];
     }
     return URL;
+}
+
++ (UIImage *)getBase64Image:(NSString *)base64 {
+    NSData *imageData = [[NSData alloc]
+                initWithBase64EncodedString:base64
+                options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    
+    return [UIImage imageWithData:imageData];
+}
+
++ (NSString *)saveImage:(UIImage *)image dirName:(NSSearchPathDirectory) dirName fileName:(NSString *)fileName {
+
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(dirName, NSUserDomainMask, YES);
+    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:fileName];
+        
+    BOOL result = [UIImagePNGRepresentation(image) writeToFile:filePath atomically:YES];
+    if (result == YES) {
+        return filePath;
+    }
+
+    return @"";
+    
+}
+
+RCT_EXPORT_METHOD(saveBase64Image:(NSDictionary*)options
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+
+    NSString *base64 = [RCTConvert NSString:options[@"base64"]];
+    NSString *name = [RCTConvert NSString:options[@"name"]];
+    
+    UIImage *image = [RNTImageLoader getBase64Image:base64];
+    NSString *filePath = [RNTImageLoader saveImage:image dirName:NSDocumentDirectory fileName:name];
+    
+    resolve(@{
+        @"path": filePath,
+    });
+    
 }
 
 @end

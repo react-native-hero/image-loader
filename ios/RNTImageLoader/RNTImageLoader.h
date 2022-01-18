@@ -12,4 +12,8 @@
 
 + (NSString *)getImageCachePath:(NSString *)url;
 
++ (UIImage *)getBase64Image:(NSString *)base64;
+
++ (NSString *)saveImage:(UIImage *)image dirName:(NSSearchPathDirectory)dirName fileName:(NSString *)fileName;
+
 @end
