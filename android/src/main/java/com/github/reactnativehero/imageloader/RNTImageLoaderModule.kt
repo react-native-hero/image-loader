@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Handler
@@ -19,6 +21,7 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.facebook.react.bridge.*
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
@@ -207,10 +210,10 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
         @JvmStatic fun saveImage(image: Bitmap, dirName: String, fileName: String): String {
 
-            val filePath = if (dirName.endsWith("/")) {
-                "$dirName$fileName"
+            val filePath = if (dirName.endsWith(File.separator)) {
+                "$dirName${File.separator}$fileName"
             } else {
-                "$dirName/$fileName"
+                "$dirName${File.separator}$fileName"
             }
 
             val output = FileOutputStream(filePath)
@@ -277,4 +280,134 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
     }
 
+    @ReactMethod
+    fun compressImage(options: ReadableMap, promise: Promise) {
+
+        val path = options.getString("path")!!
+        val size = options.getInt("size")
+        val width = options.getInt("width")
+        val height = options.getInt("height")
+        val maxSize = options.getInt("maxSize")
+
+        if (size <= maxSize) {
+            val map = Arguments.createMap()
+            map.putString("path", path)
+            map.putInt("size", size)
+            map.putInt("width", width)
+            map.putInt("height", height)
+            promise.resolve(map)
+            return
+        }
+
+        val ratio = width.toFloat() / height.toFloat()
+        val decreaseWidth = width < height
+
+        var outputDir = reactContext.cacheDir.absolutePath
+        if (!outputDir.endsWith(File.separator)) {
+            outputDir += File.separator
+        }
+        val uuid = UUID.randomUUID().toString()
+        val outputFile = "$outputDir$uuid.jpg"
+
+        val handler = Handler(Looper.getMainLooper())
+
+        Thread(Runnable {
+
+            val bitmap: Bitmap
+            try {
+                bitmap = BitmapFactory.decodeFile(path)
+            }
+            catch (ex: Throwable) {
+                ex.printStackTrace()
+                handler.post { promise.reject("-1", ex.message) }
+                return@Runnable
+            }
+
+            var outputWidth = width
+            var outputHeight = height
+            var outputSize = 0
+
+            var success = false
+            try {
+                while (outputWidth > 0 && outputHeight > 0) {
+                    val localBitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.RGB_565)
+                    val localCanvas = Canvas(localBitmap)
+                    val byteArrayOutputStream = ByteArrayOutputStream()
+
+                    localCanvas.drawBitmap(bitmap, Rect(0, 0, bitmap.width, bitmap.height), Rect(0, 0, outputWidth, outputHeight), null)
+                    localBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+                    localBitmap.recycle()
+
+                    outputSize = byteArrayOutputStream.size()
+                    if (outputSize <= maxSize) {
+                        if (outputSize > 0) {
+                            val fileOutputStream = FileOutputStream(outputFile)
+                            fileOutputStream.write(byteArrayOutputStream.toByteArray())
+                            fileOutputStream.close()
+                            success = true
+                        }
+                        byteArrayOutputStream.close()
+                        break
+                    }
+                    else {
+                        byteArrayOutputStream.close()
+                        if (decreaseWidth) {
+                            outputWidth -= getDecreaseOffset(outputWidth)
+                            outputHeight = (outputWidth.toFloat() / ratio).toInt()
+                        }
+                        else {
+                            outputHeight -= getDecreaseOffset(outputHeight)
+                            outputWidth = (outputHeight.toFloat() * ratio).toInt()
+                        }
+                    }
+                }
+
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+                handler.post { promise.reject("-1", ex.message) }
+                return@Runnable
+            }
+
+            if (success) {
+                val map = Arguments.createMap()
+                map.putString("path", outputFile)
+                map.putInt("size", outputSize)
+                map.putInt("width", outputWidth)
+                map.putInt("height", outputHeight)
+
+                handler.post { promise.resolve(map) }
+            }
+            else {
+                handler.post { promise.reject("-1", "compress image failed.") }
+            }
+
+        }).start()
+
+    }
+
+    private fun getDecreaseOffset(size: Int): Int {
+        if (size > 4000) {
+            return 2000
+        }
+        else if (size > 3000) {
+            return 1000
+        }
+        else if (size > 2000) {
+            return 500
+        }
+        else if (size > 1500) {
+            return 300
+        }
+        else if (size > 1000) {
+            return 200
+        }
+        else if (size > 500) {
+            return 50
+        }
+        else if (size > 300) {
+            return 30
+        }
+
+        return 10
+    }
 }

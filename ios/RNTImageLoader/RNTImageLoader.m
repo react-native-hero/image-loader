@@ -163,4 +163,130 @@ RCT_EXPORT_METHOD(saveBase64Image:(NSDictionary*)options
     
 }
 
+RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+
+    NSString *path = [RCTConvert NSString:options[@"path"]];
+    int size = [RCTConvert int:options[@"size"]];
+    int width = [RCTConvert int:options[@"width"]];
+    int height = [RCTConvert int:options[@"height"]];
+    int maxSize = [RCTConvert int:options[@"maxSize"]];
+    
+    if (size < maxSize) {
+        resolve(@{
+            @"path": path,
+            @"size": @(size),
+            @"width": @(width),
+            @"height": @(height)
+        });
+        return;
+    }
+    
+    UIImage *image = [UIImage imageWithContentsOfFile:path];
+    if (image == nil) {
+        reject(@"-1", @"image file is not found.", nil);
+        return;
+    }
+    
+    float ratio = (float)width / (float)height;
+    BOOL decreaseWidth = width < height;
+    
+    NSString *outputDir = NSTemporaryDirectory();
+    if (outputDir == nil) {
+        outputDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject];
+    }
+    
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    NSString *outputFile = [NSString stringWithFormat: @"%@%@%@", outputDir, uuid, @".jpg"];
+    
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+    dispatch_async(queue, ^{
+
+        int outputWidth = width;
+        int outputHeight = height;
+        int outputSize = 0;
+        
+        UIImage *outputImage = image;
+        NSData *outputData = nil;
+        
+        BOOL success = NO;
+        
+        while (outputWidth > 0 && outputHeight > 0) {
+            
+            CGSize cgSize = CGSizeMake((CGFloat)outputWidth, (CGFloat)outputHeight);
+            CGRect cgRect = CGRectMake(0, 0, (CGFloat)outputWidth, (CGFloat)outputHeight);
+            UIGraphicsBeginImageContextWithOptions(cgSize, YES, 1);
+            [image drawInRect:cgRect];
+            outputImage = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
+
+            outputData = UIImageJPEGRepresentation(outputImage, 0.6);
+            outputSize = (int)[outputData length];
+            NSLog(@"debug_file %d, %d, %d", outputWidth, outputHeight, outputSize);
+
+            if (outputSize < maxSize) {
+                success = [outputData writeToFile:outputFile atomically:YES];
+                break;
+            }
+            else {
+                if (decreaseWidth) {
+                    outputWidth -= [self getDecreaseOffset:outputWidth];
+                    outputHeight = (int)((float)outputWidth / ratio);
+                }
+                else {
+                    outputHeight -= [self getDecreaseOffset:outputHeight];
+                    outputWidth = (int)((float)outputHeight * ratio);
+                }
+            }
+            
+        };
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (success) {
+                resolve(@{
+                          @"path": outputFile,
+                          @"size": @(outputSize),
+                          @"width": @(outputWidth),
+                          @"height": @(outputHeight)
+                          });
+            }
+            else {
+                reject(@"-1", @"compress image failed.", nil);
+            }
+        });
+
+    });
+    
+}
+
+- (int)getDecreaseOffset:(int)size {
+    
+    if (size > 4000) {
+        return 2000;
+    }
+    else if (size > 3000) {
+        return 1000;
+    }
+    else if (size > 2000) {
+        return 500;
+    }
+    else if (size > 1500) {
+        return 300;
+    }
+    else if (size > 1000) {
+        return 200;
+    }
+    else if (size > 500) {
+        return 50;
+    }
+    else if (size > 300) {
+        return 30;
+    }
+    
+    return 10;
+    
+}
+
 @end
