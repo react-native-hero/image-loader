@@ -224,7 +224,6 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
 
             outputData = UIImageJPEGRepresentation(outputImage, 0.6);
             outputSize = (int)[outputData length];
-            NSLog(@"debug_file %d, %d, %d", outputWidth, outputHeight, outputSize);
 
             if (outputSize < maxSize) {
                 success = [outputData writeToFile:outputFile atomically:YES];
