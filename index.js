@@ -12,6 +12,13 @@ export function saveBase64Image(options) {
 }
 
 /**
+ * 识别本地图片二维码
+ */
+export function detectImageQRCode(options) {
+  return RNTImageLoader.detectImageQRCode(options)
+}
+
+/**
  * 压缩本地图片
  */
 export function compressImage(options) {

@@ -163,6 +163,40 @@ RCT_EXPORT_METHOD(saveBase64Image:(NSDictionary*)options
     
 }
 
+RCT_EXPORT_METHOD(detectImageQRCode:(NSDictionary*)options
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+
+    NSString *path = [RCTConvert NSString:options[@"path"]];
+    
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_async(queue, ^{
+        UIImage *image = [UIImage imageWithContentsOfFile:path];
+        if (image == nil) {
+            reject(@"-1", @"image file is not found.", nil);
+            return;
+        }
+        
+        CIContext * context = [CIContext contextWithOptions:nil];
+        NSDictionary * param = [NSDictionary dictionaryWithObject:CIDetectorAccuracyHigh forKey:CIDetectorAccuracy];
+        CIDetector * detector = [CIDetector detectorOfType:CIDetectorTypeQRCode context:context options:param];
+        NSArray *features = [detector featuresInImage:[CIImage imageWithCGImage:image.CGImage]];
+        
+        if (features.count > 0) {
+            CIQRCodeFeature *feature = [features objectAtIndex:0];
+            resolve(@{
+                @"text": feature.messageString,
+            });
+        }
+        else {
+            resolve(@{
+                @"text": @"",
+            });
+        }
+    });
+    
+}
+
 RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {

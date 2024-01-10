@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Handler
@@ -21,6 +22,13 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.facebook.react.bridge.*
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.ChecksumException
+import com.google.zxing.FormatException
+import com.google.zxing.NotFoundException
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -277,6 +285,55 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
         map.putString("path", filePath)
 
         promise.resolve(map)
+
+    }
+
+    @ReactMethod
+    fun detectImageQRCode(options: ReadableMap, promise: Promise) {
+
+        val path = options.getString("path")!!
+        val handler = Handler(Looper.getMainLooper())
+
+        Thread(Runnable {
+
+            val bitmap: Bitmap
+            try {
+                bitmap = BitmapFactory.decodeFile(path)
+            }
+            catch (ex: Throwable) {
+                ex.printStackTrace()
+                handler.post { promise.reject("-1", ex.message) }
+                return@Runnable
+            }
+
+            val width = bitmap.width
+            val height = bitmap.height
+            val data = IntArray(width * height)
+            bitmap.getPixels(data, 0, width, 0, 0, width, height)
+
+            var text = ""
+
+            val source = RGBLuminanceSource(width, height, data)
+            val reader = QRCodeReader()
+            try {
+                val result = reader.decode(BinaryBitmap(HybridBinarizer(source)))
+                text = result.text
+            }
+            catch (e: NotFoundException) {
+                e.printStackTrace()
+            }
+            catch (e: ChecksumException) {
+                e.printStackTrace()
+            }
+            catch (e: FormatException) {
+                e.printStackTrace()
+            }
+
+            val map = Arguments.createMap()
+            map.putString("text", text)
+            handler.post { promise.resolve(map) }
+
+        }).start()
 
     }
 
