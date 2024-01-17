@@ -25,6 +25,7 @@ import com.facebook.react.bridge.*
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.ChecksumException
 import com.google.zxing.FormatException
+import com.google.zxing.LuminanceSource
 import com.google.zxing.NotFoundException
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
@@ -315,18 +316,24 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
             val source = RGBLuminanceSource(width, height, data)
             val reader = QRCodeReader()
-            try {
-                val result = reader.decode(BinaryBitmap(HybridBinarizer(source)))
-                text = result.text
-            }
-            catch (e: NotFoundException) {
-                e.printStackTrace()
-            }
-            catch (e: ChecksumException) {
-                e.printStackTrace()
-            }
-            catch (e: FormatException) {
-                e.printStackTrace()
+            val sourceList = listOf(source, source.invert())
+            for (element in sourceList) {
+                try {
+                    val result = reader.decode(BinaryBitmap(HybridBinarizer(element)))
+                    text = result.text
+                }
+                catch (e: NotFoundException) {
+                    e.printStackTrace()
+                }
+                catch (e: ChecksumException) {
+                    e.printStackTrace()
+                }
+                catch (e: FormatException) {
+                    e.printStackTrace()
+                }
+                if (text.isNotBlank()) {
+                    break
+                }
             }
 
             val map = Arguments.createMap()
