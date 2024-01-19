@@ -14,8 +14,8 @@ export function saveBase64Image(options) {
 /**
  * 识别本地图片二维码
  */
-export function detectImageQRCode(options) {
-  return RNTImageLoader.detectImageQRCode(options)
+export function decodeImageQRCode(options) {
+  return RNTImageLoader.decodeImageQRCode(options)
 }
 
 /**

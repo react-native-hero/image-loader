@@ -21,13 +21,7 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.facebook.react.bridge.*
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.ChecksumException
-import com.google.zxing.FormatException
-import com.google.zxing.NotFoundException
-import com.google.zxing.RGBLuminanceSource
-import com.google.zxing.common.HybridBinarizer
-import com.google.zxing.qrcode.QRCodeReader
+import com.github.herokotlin.qrcode.QRCode
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -288,7 +282,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
     }
 
     @ReactMethod
-    fun detectImageQRCode(options: ReadableMap, promise: Promise) {
+    fun decodeImageQRCode(options: ReadableMap, promise: Promise) {
 
         val path = options.getString("path")!!
         val handler = Handler(Looper.getMainLooper())
@@ -305,62 +299,8 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 return@Runnable
             }
 
-            val readQRCode = fun(sourceImage: Bitmap): String {
-                val width = sourceImage.width
-                val height = sourceImage.height
-                val data = IntArray(width * height)
-                sourceImage.getPixels(data, 0, width, 0, 0, width, height)
-
-                var text = ""
-
-                val source = RGBLuminanceSource(width, height, data)
-                val reader = QRCodeReader()
-                val sourceList = listOf(source, source.invert())
-                for (element in sourceList) {
-                    try {
-                        val result = reader.decode(BinaryBitmap(HybridBinarizer(element)))
-                        text = result.text
-                    }
-                    catch (e: NotFoundException) {
-                        e.printStackTrace()
-                    }
-                    catch (e: ChecksumException) {
-                        e.printStackTrace()
-                    }
-                    catch (e: FormatException) {
-                        e.printStackTrace()
-                    }
-                    if (text.isNotBlank()) {
-                        break
-                    }
-                }
-                return text
-            }
-
-            var text = ""
-
-            // 图片太大无法识别二维码
-            var sourceImage = bitmap
-            var width = bitmap.width
-            var height = bitmap.height
-
-            while (true) {
-                text = readQRCode(sourceImage)
-                if (text.isNotBlank()) {
-                    break
-                }
-                else {
-                    width = (width.toFloat() * 0.7).toInt()
-                    height = (height.toFloat() * 0.7).toInt()
-                    if (width < 200 || height < 200) {
-                        break
-                    }
-                    sourceImage = Bitmap.createScaledBitmap(bitmap, width, height, true)
-                }
-            }
-
             val map = Arguments.createMap()
-            map.putString("text", text)
+            map.putString("text", QRCode.decodeQRCode(bitmap))
             handler.post { promise.resolve(map) }
 
         }).start()

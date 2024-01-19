@@ -14,36 +14,36 @@ RCT_EXPORT_MODULE(RNTImageLoader);
 + (void)init {
 
     // https://github.com/SDWebImage/SDWebImage/wiki/Common-Problems
-    
+
     // 1 Week
     SDImageCache.sharedImageCache.config.maxDiskAge = 3600 * 24 * 7;
-    
+
     // 20 images (1024 * 1024 pixels)
     SDImageCache.sharedImageCache.config.maxMemoryCost = 1024 * 1024 * 4 * 20;
-    
+
     // Disable weak cache, may see blank when return from background because memory cache is purged under pressure
     SDImageCache.sharedImageCache.config.shouldUseWeakMemoryCache = NO;
-    
+
     // Use mmap for disk cache query
     SDImageCache.sharedImageCache.config.diskCacheReadingOptions = NSDataReadingMappedIfSafe;
-    
+
     SDWebImageManager.sharedManager.optionsProcessor = [SDWebImageOptionsProcessor optionsProcessorWithBlock:^SDWebImageOptionsResult * _Nullable(NSURL * _Nullable url, SDWebImageOptions options, SDWebImageContext * _Nullable context) {
          // Disable Force Decoding in global, may reduce the frame rate
          options |= SDWebImageAvoidDecodeImage;
          return [[SDWebImageOptionsResult alloc] initWithOptions:options context:context];
     }];
-    
+
     SDImageWebPCoder *webpCoder = [SDImageWebPCoder sharedCoder];
     [[SDImageCodersManager sharedManager] addCoder:webpCoder];
-    
+
 }
 
 + (void)loadImage:(NSString *)url onProgress:(void (^)(NSInteger, NSInteger))onProgress onComplete:(void (^)(UIImage*))onComplete {
-    
+
     NSURL *URL = [RNTImageLoader createImageURL:url];
-    
+
     SDWebImageManager *manager = [SDWebImageManager sharedManager];
-    
+
     [manager loadImageWithURL:URL
         options:0
         progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
@@ -55,15 +55,15 @@ RCT_EXPORT_MODULE(RNTImageLoader);
             onComplete(image);
         }
     ];
-    
+
 }
 
 + (void)setThumbnailImage:(UIImageView *)imageView url:(NSString *)url loading:(UIImage *)loading error:(UIImage *)error onProgress:(void (^)(NSInteger, NSInteger))onProgress onComplete:(void (^)(UIImage*))onComplete {
-    
+
     NSURL *URL = [RNTImageLoader createImageURL:url];
-   
+
     UIImage *failure = error;
-    
+
     [imageView sd_setImageWithURL:URL
         placeholderImage:loading
         options:0
@@ -79,15 +79,15 @@ RCT_EXPORT_MODULE(RNTImageLoader);
             onComplete(image);
         }
     ];
-    
+
 }
 
 + (void)setHDImage:(UIImageView *)imageView url:(NSString *)url loading:(UIImage *)loading error:(UIImage *)error onProgress:(void (^)(NSInteger, NSInteger))onProgress onComplete:(void (^)(UIImage*))onComplete {
-    
+
     NSURL *URL = [RNTImageLoader createImageURL:url];
-    
+
     UIImage *failure = error;
-    
+
     [imageView sd_setImageWithURL:URL
         placeholderImage:loading
         options:0
@@ -103,7 +103,7 @@ RCT_EXPORT_MODULE(RNTImageLoader);
             onComplete(image);
         }
     ];
-    
+
 }
 
 + (NSString *)getImageCachePath:(NSString *)url {
@@ -129,7 +129,7 @@ RCT_EXPORT_MODULE(RNTImageLoader);
     NSData *imageData = [[NSData alloc]
                 initWithBase64EncodedString:base64
                 options:NSDataBase64DecodingIgnoreUnknownCharacters];
-    
+
     return [UIImage imageWithData:imageData];
 }
 
@@ -137,14 +137,14 @@ RCT_EXPORT_MODULE(RNTImageLoader);
 
     NSArray *paths = NSSearchPathForDirectoriesInDomains(dirName, NSUserDomainMask, YES);
     NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:fileName];
-        
+
     BOOL result = [UIImagePNGRepresentation(image) writeToFile:filePath atomically:YES];
     if (result == YES) {
         return filePath;
     }
 
     return @"";
-    
+
 }
 
 RCT_EXPORT_METHOD(saveBase64Image:(NSDictionary*)options
@@ -153,22 +153,22 @@ RCT_EXPORT_METHOD(saveBase64Image:(NSDictionary*)options
 
     NSString *base64 = [RCTConvert NSString:options[@"base64"]];
     NSString *name = [RCTConvert NSString:options[@"name"]];
-    
+
     UIImage *image = [RNTImageLoader getBase64Image:base64];
     NSString *filePath = [RNTImageLoader saveImage:image dirName:NSDocumentDirectory fileName:name];
-    
+
     resolve(@{
         @"path": filePath,
     });
-    
+
 }
 
-RCT_EXPORT_METHOD(detectImageQRCode:(NSDictionary*)options
+RCT_EXPORT_METHOD(decodeImageQRCode:(NSDictionary*)options
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
 
     NSString *path = [RCTConvert NSString:options[@"path"]];
-    
+
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     dispatch_async(queue, ^{
         UIImage *image = [UIImage imageWithContentsOfFile:path];
@@ -176,12 +176,12 @@ RCT_EXPORT_METHOD(detectImageQRCode:(NSDictionary*)options
             reject(@"-1", @"image file is not found.", nil);
             return;
         }
-        
+
         CIContext * context = [CIContext contextWithOptions:nil];
         NSDictionary * param = [NSDictionary dictionaryWithObject:CIDetectorAccuracyHigh forKey:CIDetectorAccuracy];
         CIDetector * detector = [CIDetector detectorOfType:CIDetectorTypeQRCode context:context options:param];
         NSArray *features = [detector featuresInImage:[CIImage imageWithCGImage:image.CGImage]];
-        
+
         if (features.count > 0) {
             CIQRCodeFeature *feature = [features objectAtIndex:0];
             resolve(@{
@@ -194,7 +194,7 @@ RCT_EXPORT_METHOD(detectImageQRCode:(NSDictionary*)options
             });
         }
     });
-    
+
 }
 
 RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
@@ -206,7 +206,7 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
     int width = [RCTConvert int:options[@"width"]];
     int height = [RCTConvert int:options[@"height"]];
     int maxSize = [RCTConvert int:options[@"maxSize"]];
-    
+
     if (size < maxSize) {
         resolve(@{
             @"path": path,
@@ -216,24 +216,24 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
         });
         return;
     }
-    
+
     UIImage *image = [UIImage imageWithContentsOfFile:path];
     if (image == nil) {
         reject(@"-1", @"image file is not found.", nil);
         return;
     }
-    
+
     float ratio = (float)width / (float)height;
     BOOL decreaseWidth = width < height;
-    
+
     NSString *outputDir = NSTemporaryDirectory();
     if (outputDir == nil) {
         outputDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject];
     }
-    
+
     NSString *uuid = [[NSUUID UUID] UUIDString];
     NSString *outputFile = [NSString stringWithFormat: @"%@%@%@", outputDir, uuid, @".jpg"];
-    
+
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 
     dispatch_async(queue, ^{
@@ -241,14 +241,14 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
         int outputWidth = width;
         int outputHeight = height;
         int outputSize = 0;
-        
+
         UIImage *outputImage = image;
         NSData *outputData = nil;
-        
+
         BOOL success = NO;
-        
+
         while (outputWidth > 0 && outputHeight > 0) {
-            
+
             CGSize cgSize = CGSizeMake((CGFloat)outputWidth, (CGFloat)outputHeight);
             CGRect cgRect = CGRectMake(0, 0, (CGFloat)outputWidth, (CGFloat)outputHeight);
             UIGraphicsBeginImageContextWithOptions(cgSize, YES, 1);
@@ -273,9 +273,9 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
                     outputWidth = (int)((float)outputHeight * ratio);
                 }
             }
-            
+
         };
-        
+
         dispatch_async(dispatch_get_main_queue(), ^{
             if (success) {
                 resolve(@{
@@ -291,11 +291,11 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
         });
 
     });
-    
+
 }
 
 - (int)getDecreaseOffset:(int)size {
-    
+
     if (size > 4000) {
         return 2000;
     }
@@ -317,9 +317,9 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
     else if (size > 300) {
         return 30;
     }
-    
+
     return 10;
-    
+
 }
 
 @end
