@@ -99,11 +99,11 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
         @JvmStatic fun setHDImage(imageView: ImageView, url: String, loading: Int, error: Int, onProgress: (Long, Long) -> Unit, onComplete: (Drawable?) -> Unit) {
 
-            val fileName = URLUtil.guessFileName(url, null, null).toLowerCase(Locale.ENGLISH)
+            val fileName = URLUtil.guessFileName(url, null, null).lowercase()
             var extName = ""
             val index = fileName.lastIndexOf(".")
             if (index > 0) {
-                extName = fileName.substring(index + 1)
+                extName = fileName.substring(index + 1).lowercase()
             }
 
             var options = RequestOptions()
@@ -212,16 +212,27 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
         @JvmStatic fun saveImage(image: Bitmap, dirName: String, fileName: String): String {
 
             val filePath = if (dirName.endsWith(File.separator)) {
-                "$dirName${File.separator}$fileName"
+                "$dirName$fileName"
             } else {
                 "$dirName${File.separator}$fileName"
             }
 
+            val compressFormat = if (isPngImage(fileName)) {
+                Bitmap.CompressFormat.PNG
+            }
+            else {
+                Bitmap.CompressFormat.JPEG
+            }
+
             val output = FileOutputStream(filePath)
-            image.compress(Bitmap.CompressFormat.PNG, 100, output)
+            image.compress(compressFormat, 100, output)
             output.close()
 
             return filePath
+        }
+
+        private fun isPngImage(fileName: String): Boolean {
+            return Regex("\\.png$", RegexOption.IGNORE_CASE).containsMatchIn(fileName)
         }
 
         private fun addProgressListener(url: String, onProgress: (Long, Long) -> Unit) {
@@ -326,6 +337,8 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             return
         }
 
+        val isPng = isPngImage(path)
+
         val ratio = width.toFloat() / height.toFloat()
         val decreaseWidth = width < height
 
@@ -334,7 +347,19 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             outputDir += File.separator
         }
         val uuid = UUID.randomUUID().toString()
-        val outputFile = "$outputDir$uuid.jpg"
+        val outputFile = if (isPng) {
+            "$outputDir$uuid.png"
+        }
+        else {
+            "$outputDir$uuid.jpg"
+        }
+
+        val compressFormat = if (isPng) {
+            Bitmap.CompressFormat.PNG
+        }
+        else {
+            Bitmap.CompressFormat.JPEG
+        }
 
         val handler = Handler(Looper.getMainLooper())
 
@@ -357,12 +382,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             var success = false
             try {
                 while (outputWidth > 0 && outputHeight > 0) {
-                    val localBitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.RGB_565)
+                    val localBitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
                     val localCanvas = Canvas(localBitmap)
                     val byteArrayOutputStream = ByteArrayOutputStream()
 
                     localCanvas.drawBitmap(bitmap, Rect(0, 0, bitmap.width, bitmap.height), Rect(0, 0, outputWidth, outputHeight), null)
-                    localBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+                    localBitmap.compress(compressFormat, 70, byteArrayOutputStream)
                     localBitmap.recycle()
 
                     outputSize = byteArrayOutputStream.size()
