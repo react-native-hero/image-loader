@@ -217,7 +217,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 "$dirName${File.separator}$fileName"
             }
 
-            val compressFormat = if (isPngImage(fileName)) {
+            val compressFormat = if (image.hasAlpha()) {
                 Bitmap.CompressFormat.PNG
             }
             else {
@@ -229,10 +229,6 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             output.close()
 
             return filePath
-        }
-
-        private fun isPngImage(fileName: String): Boolean {
-            return Regex("\\.png$", RegexOption.IGNORE_CASE).containsMatchIn(fileName)
         }
 
         private fun addProgressListener(url: String, onProgress: (Long, Long) -> Unit) {
@@ -337,28 +333,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             return
         }
 
-        val isPng = isPngImage(path)
-
         val ratio = width.toFloat() / height.toFloat()
         val decreaseWidth = width < height
 
         var outputDir = reactContext.cacheDir.absolutePath
         if (!outputDir.endsWith(File.separator)) {
             outputDir += File.separator
-        }
-        val uuid = UUID.randomUUID().toString()
-        val outputFile = if (isPng) {
-            "$outputDir$uuid.png"
-        }
-        else {
-            "$outputDir$uuid.jpg"
-        }
-
-        val compressFormat = if (isPng) {
-            Bitmap.CompressFormat.PNG
-        }
-        else {
-            Bitmap.CompressFormat.JPEG
         }
 
         val handler = Handler(Looper.getMainLooper())
@@ -375,6 +355,15 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 return@Runnable
             }
 
+            var extname = ".jpg"
+            var compressFormat = Bitmap.CompressFormat.JPEG
+
+            if (bitmap.hasAlpha()) {
+                extname = ".png"
+                compressFormat = Bitmap.CompressFormat.PNG
+            }
+
+            val outputFile = outputDir + UUID.randomUUID().toString() + extname
             var outputWidth = width
             var outputHeight = height
             var outputSize = 0
