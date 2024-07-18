@@ -20,13 +20,19 @@ import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
-import com.facebook.react.bridge.*
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableMap
 import com.github.herokotlin.qrcode.QRCode
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.UUID
+
 
 class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -322,8 +328,22 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
         val width = options.getInt("width")
         val height = options.getInt("height")
         val maxSize = options.getInt("maxSize")
+        var maxWidth = 0
+        var maxHeight = 0
+        if (options.hasKey("maxWidth")) {
+            maxWidth = options.getInt("maxWidth")
+        }
+        if (options.hasKey("maxHeight")) {
+            maxHeight = options.getInt("maxHeight")
+        }
+        if (maxWidth == 0) {
+            maxWidth = width
+        }
+        if (maxHeight == 0) {
+            maxHeight = height
+        }
 
-        if (size <= maxSize) {
+        if (size <= maxSize && width <= maxWidth && height <= maxHeight) {
             val map = Arguments.createMap()
             map.putString("path", path)
             map.putInt("size", size)
@@ -355,18 +375,26 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 return@Runnable
             }
 
-            var extname = ".jpg"
+            var outputExtname = ".jpg"
             var compressFormat = Bitmap.CompressFormat.JPEG
 
             if (bitmap.hasAlpha()) {
-                extname = ".png"
+                outputExtname = ".png"
                 compressFormat = Bitmap.CompressFormat.PNG
             }
 
-            val outputFile = outputDir + UUID.randomUUID().toString() + extname
-            var outputWidth = width
-            var outputHeight = height
+            val outputFile = outputDir + UUID.randomUUID().toString() + outputExtname
             var outputSize = 0
+            var outputWidth: Int
+            var outputHeight: Int
+            if (maxWidth < maxHeight) {
+                outputWidth = maxWidth
+                outputHeight = (outputWidth.toFloat() / ratio).toInt()
+            }
+            else {
+                outputHeight = maxHeight
+                outputWidth = (outputHeight.toFloat() * ratio).toInt()
+            }
 
             var success = false
             try {
@@ -376,11 +404,11 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                     val byteArrayOutputStream = ByteArrayOutputStream()
 
                     localCanvas.drawBitmap(bitmap, Rect(0, 0, bitmap.width, bitmap.height), Rect(0, 0, outputWidth, outputHeight), null)
-                    localBitmap.compress(compressFormat, 70, byteArrayOutputStream)
+                    localBitmap.compress(compressFormat, 80, byteArrayOutputStream)
                     localBitmap.recycle()
 
                     outputSize = byteArrayOutputStream.size()
-                    if (outputSize <= maxSize) {
+                    if (outputSize <= maxSize && outputWidth <= maxWidth && outputHeight <= maxHeight) {
                         if (outputSize > 0) {
                             val fileOutputStream = FileOutputStream(outputFile)
                             fileOutputStream.write(byteArrayOutputStream.toByteArray())
@@ -427,7 +455,13 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
     }
 
     private fun getDecreaseOffset(size: Int): Int {
-        if (size > 4000) {
+        if (size > 10000) {
+            return 5000
+        }
+        else if (size > 8000) {
+            return 4000
+        }
+        else if (size > 4000) {
             return 2000
         }
         else if (size > 3000) {

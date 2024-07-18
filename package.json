@@ -1,6 +1,6 @@
 {
   "name": "@react-native-hero/image-loader",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "react native image loader",
   "main": "index.js",
   "scripts": {

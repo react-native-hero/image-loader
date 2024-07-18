@@ -206,8 +206,17 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
     int width = [RCTConvert int:options[@"width"]];
     int height = [RCTConvert int:options[@"height"]];
     int maxSize = [RCTConvert int:options[@"maxSize"]];
+    int maxWidth = [RCTConvert int:options[@"maxWidth"]];
+    int maxHeight = [RCTConvert int:options[@"maxHeight"]];
+    
+    if (maxWidth == 0) {
+        maxWidth = width;
+    }
+    if (maxHeight == 0) {
+        maxHeight = height;
+    }
 
-    if (size < maxSize) {
+    if (size <= maxSize && width <= maxWidth && height <= maxHeight) {
         resolve(@{
             @"path": path,
             @"size": @(size),
@@ -230,17 +239,34 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
     if (outputDir == nil) {
         outputDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject];
     }
+    
+    BOOL isPNGImage = NO;
+    NSString *outputExtername = @".jpg";
+    
+    NSString *pathExtension = [NSURL fileURLWithPath:path].pathExtension;
+    if ([[pathExtension uppercaseString] isEqual: @"PNG"]) {
+        isPNGImage = YES;
+        outputExtername = @".png";
+    }
 
     NSString *uuid = [[NSUUID UUID] UUIDString];
-    NSString *outputFile = [NSString stringWithFormat: @"%@%@%@", outputDir, uuid, @".jpg"];
+    NSString *outputFile = [NSString stringWithFormat: @"%@%@%@", outputDir, uuid, outputExtername];
 
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 
     dispatch_async(queue, ^{
-
-        int outputWidth = width;
-        int outputHeight = height;
+        
         int outputSize = 0;
+        int outputWidth = 0;
+        int outputHeight = 0;
+        if (maxWidth < maxHeight) {
+            outputWidth = maxWidth;
+            outputHeight = (int)((float)outputWidth / ratio);
+        }
+        else {
+            outputHeight = maxHeight;
+            outputWidth = (int)((float)outputHeight * ratio);
+        }
 
         UIImage *outputImage = image;
         NSData *outputData = nil;
@@ -256,10 +282,15 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
             outputImage = UIGraphicsGetImageFromCurrentImageContext();
             UIGraphicsEndImageContext();
 
-            outputData = UIImageJPEGRepresentation(outputImage, 0.6);
+            if (isPNGImage) {
+                outputData = UIImagePNGRepresentation(outputImage);
+            }
+            else {
+                outputData = UIImageJPEGRepresentation(outputImage, 0.8);
+            }
             outputSize = (int)[outputData length];
 
-            if (outputSize < maxSize) {
+            if (outputSize <= maxSize && outputWidth <= maxWidth && outputHeight <= maxHeight) {
                 success = [outputData writeToFile:outputFile atomically:YES];
                 break;
             }
@@ -296,7 +327,13 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
 
 - (int)getDecreaseOffset:(int)size {
 
-    if (size > 4000) {
+    if (size > 10000) {
+        return 5000;
+    }
+    else if (size > 8000) {
+        return 4000;
+    }
+    else if (size > 4000) {
         return 2000;
     }
     else if (size > 3000) {
