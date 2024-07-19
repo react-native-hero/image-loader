@@ -277,7 +277,7 @@ RCT_EXPORT_METHOD(compressImage:(NSDictionary*)options
 
             CGSize cgSize = CGSizeMake((CGFloat)outputWidth, (CGFloat)outputHeight);
             CGRect cgRect = CGRectMake(0, 0, (CGFloat)outputWidth, (CGFloat)outputHeight);
-            UIGraphicsBeginImageContextWithOptions(cgSize, YES, 1);
+            UIGraphicsBeginImageContextWithOptions(cgSize, NO, 1);
             [image drawInRect:cgRect];
             outputImage = UIGraphicsGetImageFromCurrentImageContext();
             UIGraphicsEndImageContext();
