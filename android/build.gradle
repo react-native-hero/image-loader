@@ -1,6 +1,6 @@
 buildscript {
     // Buildscript is evaluated before everything else so we can't use safeExtGet
-    def kotlinVersion = rootProject.ext.has('kotlinVersion') ? rootProject.ext.get('kotlinVersion') : '1.7.20'
+    def kotlinVersion = rootProject.ext.has('kotlinVersion') ? rootProject.ext.get('kotlinVersion') : '2.0.21'
 
     repositories {
         mavenCentral()
@@ -19,15 +19,14 @@ def safeExtGet(prop, fallback) {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion safeExtGet('compileSdkVersion', 28)
-    buildToolsVersion safeExtGet('buildToolsVersion', '28.0.3')
+    compileSdkVersion safeExtGet('compileSdkVersion', 35)
+    buildToolsVersion safeExtGet('buildToolsVersion', '35.0.0')
 
     defaultConfig {
-        minSdkVersion safeExtGet('minSdkVersion', 21)
-        targetSdkVersion safeExtGet('targetSdkVersion', 28)
+        minSdkVersion safeExtGet('minSdkVersion', 20)
+        targetSdkVersion safeExtGet('targetSdkVersion', 35)
         versionCode 1
         versionName "1.0"
-        consumerProguardFiles 'proguard-rules.pro'
     }
     lintOptions {
         abortOnError false
@@ -36,10 +35,10 @@ android {
 
 dependencies {
     implementation "com.facebook.react:react-native:${safeExtGet('reactNativeVersion', '+')}"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${safeExtGet('kotlinVersion', '1.7.20')}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${safeExtGet('kotlinVersion', '2.0.21')}"
     implementation "com.github.bumptech.glide:glide:${safeExtGet('glideVersion', '4.11.0')}"
     implementation "com.github.bumptech.glide:okhttp3-integration:${safeExtGet('glideVersion', '4.11.0')}"
-    implementation 'com.github.herokotlin:QRCode:0.0.1'
+    implementation 'com.github.herokotlin:QRCode:0.0.2'
     annotationProcessor "com.github.bumptech.glide:compiler:${safeExtGet('glideVersion', '4.11.0')}"
 }
 

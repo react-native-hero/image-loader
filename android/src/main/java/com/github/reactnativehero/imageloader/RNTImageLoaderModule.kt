@@ -7,12 +7,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
 import android.webkit.URLUtil
 import android.widget.ImageView
+import androidx.core.net.toUri
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -49,7 +49,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
             addProgressListener(url, onProgress)
 
             Glide.with(context).asBitmap().load(url).listener(object : RequestListener<Bitmap> {
-                override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Bitmap>, isFirstResource: Boolean): Boolean {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Bitmap>?,
+                    isFirstResource: Boolean
+                ): Boolean {
                     removeProgressListener(url)
                     runMainThread {
                         onComplete(null)
@@ -83,7 +88,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
 
                 Glide.with(imageView.context).load(url).apply(options).listener(object: RequestListener<Drawable> {
 
-                    override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>?,
+                        isFirstResource: Boolean
+                    ): Boolean {
                         removeProgressListener(url)
                         runMainThread {
                             onComplete(null)
@@ -127,7 +137,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 if (extName == "gif") {
                     Glide.with(imageView.context).load(url).apply(options).listener(object : RequestListener<Drawable> {
 
-                        override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Drawable>?,
+                            isFirstResource: Boolean
+                        ): Boolean {
                             removeProgressListener(url)
                             runMainThread {
                                 onComplete(null)
@@ -151,7 +166,12 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                     }
                     Glide.with(imageView.context).downloadOnly().load(url).listener(object : RequestListener<File> {
 
-                        override fun onLoadFailed(e: GlideException?, model: Any, target: Target<File>, isFirstResource: Boolean): Boolean {
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<File>?,
+                            isFirstResource: Boolean
+                        ): Boolean {
                             removeProgressListener(url)
                             runMainThread {
                                 if (error > 0) {
@@ -172,7 +192,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                             }
 
                             runMainThread {
-                                imageView.setImageURI(Uri.parse("file:///$absolutePath"))
+                                imageView.setImageURI("file:///$absolutePath".toUri())
                                 onComplete(imageView.drawable)
                             }
 
