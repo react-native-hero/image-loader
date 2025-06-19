@@ -52,7 +52,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                 override fun onLoadFailed(
                     e: GlideException?,
                     model: Any?,
-                    target: Target<Bitmap>?,
+                    target: Target<Bitmap>,
                     isFirstResource: Boolean
                 ): Boolean {
                     removeProgressListener(url)
@@ -91,7 +91,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                     override fun onLoadFailed(
                         e: GlideException?,
                         model: Any?,
-                        target: Target<Drawable>?,
+                        target: Target<Drawable>,
                         isFirstResource: Boolean
                     ): Boolean {
                         removeProgressListener(url)
@@ -140,7 +140,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                         override fun onLoadFailed(
                             e: GlideException?,
                             model: Any?,
-                            target: Target<Drawable>?,
+                            target: Target<Drawable>,
                             isFirstResource: Boolean
                         ): Boolean {
                             removeProgressListener(url)
@@ -150,7 +150,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                             return false
                         }
 
-                        override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
+                        override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
                             removeProgressListener(url)
                             runMainThread {
                                 onComplete(resource)
@@ -169,7 +169,7 @@ class RNTImageLoaderModule(private val reactContext: ReactApplicationContext) : 
                         override fun onLoadFailed(
                             e: GlideException?,
                             model: Any?,
-                            target: Target<File>?,
+                            target: Target<File>,
                             isFirstResource: Boolean
                         ): Boolean {
                             removeProgressListener(url)
